@@ -3,7 +3,8 @@
 #include <string.h>
 #include "../include/file_reading.h"
 #include "../include/file_format.h"
-
+#include "../include/classifier.h"
+// #include "../include/data_structures.h"
 
 //  A função ignorarPrimeiraLinha não deve reabrir/declarar FILE* 
 void ignorarPrimeiraLinha(FILE *arquivo_csv) {
@@ -17,6 +18,7 @@ void ignorarPrimeiraLinha(FILE *arquivo_csv) {
 int lerCSVpraBIN(const char *arquivoCSV, const char *arquivoBIN) {
     Alimento alimento;
     int contador = 0;
+    int num_linha_lida = 1;
     FILE *arquivo_csv, *arquivo_binario;
     char linha[512];
     const char *delimitador = ";"; // Delimiter do csv
@@ -38,15 +40,18 @@ int lerCSVpraBIN(const char *arquivoCSV, const char *arquivoBIN) {
 
     // Leitura e processamento das linhas do CSV
     while (fgets(linha, sizeof(linha), arquivo_csv) != NULL) {
+        num_linha_lida++;
         removerQuebraLinha(linha); // Remove quebras de linha no final
         char *token;
         int campo_atual = 0;
+        char categoria_str[50] = ""; // Variável auxiliar para a string da categoria
 
         // Inicializa com valores padrão. Isso preenche os campos ausentes (Carboidratos, Gorduras, Fibras) com 0.0
         alimento.codigo = 0;
         alimento.nome[0] = '\0';
         alimento.calorias = 0.0;
         alimento.proteinas = 0.0;
+        alimento.categoria_id = CATEGORIA_DESCONHECIDA;
 
         token = strtok(linha, delimitador); // Primeira chamada com ';'
         while (token) {
@@ -64,28 +69,38 @@ int lerCSVpraBIN(const char *arquivoCSV, const char *arquivoBIN) {
                 alimento.calorias = atof(token);
             } else if (campo_atual == 3) {
                 alimento.proteinas = atof(token);
+            } else if (campo_atual == 4) {
+                strncpy(categoria_str, token, sizeof(categoria_str) - 1);
+                categoria_str[sizeof(categoria_str) - 1] = '\0';
+                break;
             }
-            // O campo 4 (Categoria) e os seguintes (5 e 6) são ignorados ou permanecem 0.0/vazio.
+            // Ignora campos 5 em diante
 
             token = strtok(NULL, delimitador); // *** CORREÇÃO 2.B: Usando o delimitador correto (';') ***
             campo_atual++;
         }
 
-        // *** CORREÇÃO 1: Ajusta a condição para o número REAL de campos (5) ***
-        // O CSV tem 5 campos. Se o campo_atual for 5, a linha foi lida corretamente.
-        if (campo_atual >= 4) { // Pelo menos 4 campos úteis (código, nome, calorias, proteínas)
+        if (categoria_str[0] != '\0') {
+            alimento.categoria_id = inferirCategoriaPelaString(categoria_str);
+        }
+
+        if (alimento.codigo > 0 && alimento.categoria_id != CATEGORIA_DESCONHECIDA) {
+            printf("--- DEBUG ESCRITA P1 (REG %d) ---\n", contador + 1);
+            printf("  Escrevendo Código: %d\n", alimento.codigo);
+            printf("  Escrevendo Descrição: %s\n", alimento.nome);
+            printf("  Escrevendo Categoria ID: %d\n", alimento.categoria_id);
+
             if (fwrite(&alimento, sizeof(Alimento), 1, arquivo_binario) != 1) {
                 printf("Erro ao escrever dados no arquivo binário\n");
                 break;
             }
             contador++;
         } else {
-             // Imprime o erro apenas para linhas que não conseguiram 4 campos
-             // (o que indica uma linha vazia ou muito mal formatada)
-             // A Categoria (campo 4) é ignorada mas a linha é válida.
-             if (campo_atual > 0) { 
-                 printf("Erro ao processar linha (campos insuficientes/formato incorreto): %s\n", linha);
-             }
+            // Este é o único debug que mostrará as 99 linhas ignoradas.
+            printf("\n--- ALERTA: LINHA IGNORADA (CSV Linha #%d) ---\n", num_linha_lida); 
+            printf("Motivo: CÓDIGO/CATEGORIA Inválido (Cód: %d, Cat ID: %d)\n", alimento.codigo, alimento.categoria_id);
+            printf("Linha RAW:\n>>> %s\n", linha);
+            printf("--------------------------------------\n");
         }
     }
 
@@ -95,4 +110,34 @@ int lerCSVpraBIN(const char *arquivoCSV, const char *arquivoBIN) {
     return contador;
 }
 
-// ... (verificarArquivoBinario não precisa de correção)
+void verificarArquivoBinario(const char* arquivoBinario) {
+    Alimento alimento;
+    FILE *arquivo_bin = fopen(arquivoBinario, "rb");
+
+    if (arquivo_bin == NULL) {
+        printf("Aviso: Não foi possível abrir o arquivo binário para verificação.\n");
+        return;
+    }
+
+    printf("\n--- Conteúdo do arquivo binário (Primeiros 5 alimentos) ---\n");
+    printf("| Codigo | Nome (Truncado) | Calorias | Proteinas |\n");
+    printf("|--------|-----------------|----------|-----------|\n");
+
+    int i = 0;
+    // Tenta ler até 5 registros
+    while (i < 5 && fread(&alimento, sizeof(Alimento), 1, arquivo_bin) == 1) {
+        char nome_truncado[18];
+        strncpy(nome_truncado, alimento.nome, 17);
+        nome_truncado[17] = '\0';
+        printf("| %6d | %-15s | %8.2f | %9.2f |\n",
+               alimento.codigo, nome_truncado, alimento.calorias, alimento.proteinas);
+        i++;
+    }
+
+    if (i == 0) {
+        printf("Não foi possível ler nenhum registro do arquivo binário.\n");
+    }
+
+    printf("----------------------------------------------------------\n");
+    fclose(arquivo_bin);
+}

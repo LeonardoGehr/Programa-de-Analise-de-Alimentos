@@ -7,8 +7,9 @@ typedef struct {
     int codigo;
     char nome[50];
     float calorias;
-    float proteinas;    
-} Alimento;
+    float proteinas;
+    int categoria_id;
+} __attribute__ ((packed)) Alimento;
 
 void removerQuebraLinha(char *str);
 void substituirVirgula(char *str);

@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
-#include "./include/file_format.h"
-#include "./include/file_reading.h"
+#include "file_format.h"
+#include "file_reading.h"
 
 // Função principal para chamar os métodos
 int main() {
+    setlocale(LC_ALL, "");
+
     const char* arquivo_entrada = "trabalho03-teste.csv"; // Nome do arquivo CSV
     const char* arquivo_saida = "dados.bin"; // Nome do arquivo binário
 
@@ -25,5 +28,3 @@ int main() {
 
     return 0;
 }
-
-    

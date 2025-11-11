@@ -1,21 +1,9 @@
-/**
- * P2.c - Arquivo principal do Programa P2 (Requisito 3.b)
- * Implementa a função main e a lógica de loop do menu.
- * Assume que todas as funções de estrutura de dados (data_structures.h) 
- * estão corretamente implementadas em seus respectivos arquivos .c
- */
-
-#include "./include/data_structures.h"
+#include "../include/data_structures.h"
 
 #define ARQUIVO_BINARIO "dados.bin"
 #define MIN_ID_CATEGORIA 1
 #define MAX_ID_CATEGORIA 15
 
-/**
- * @brief Função principal do Programa P2.
- * * Etapa C: Lógica de carregamento, menu e salvamento.
- * * @return int 0 se sucesso, 1 se erro.
- */
 int main() {
     // Cabeça da lista ligada de Categorias (Requisito C.a.1)
     NoCategoria *lista_categorias_head = NULL;

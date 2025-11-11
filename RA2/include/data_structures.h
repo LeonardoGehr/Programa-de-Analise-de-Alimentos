@@ -5,27 +5,33 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* --- Requisito 1: ENUM para categorias --- */
 typedef enum {
+    CATEGORIA_DESCONHECIDA = 0, // ID 0 para desconhecida
     CEREAIS = 1, VERDURAS, FRUTAS, GORDURAS, PESCADOS,
     CARNES, LACTEOS, BEBIDAS, OVOS, ACUCARES,
-    MISCELANEAS, INDUSTRIALIZADOS, PREPARADOS, LEGUMINOSAS, SEMENTES,
-    CATEGORIA_DESCONHECIDA = 0 // Usada quando a Categoria não pode ser inferida (aqui sempre)
+    MISCELANEAS, INDUSTRIALIZADOS, PREPARADOS, LEGUMINOSAS, SEMENTES // sementes = 15
 } Categoria;
 
 #define MAX_DESC 50 
 #define NUM_CATEGORIAS 15
 
-/* Estrutura de dados lida do binário (DEVE SER COMPATÍVEL com struct Alimento do P1) */
+/* Estrutura Auxiliar para Leitura Binária (Exatamente igual ao struct Alimento do P1) */
 typedef struct {
     int codigo;
-    char descricao[MAX_DESC]; // nome
-    float energia; // calorias (Kcal)
-    float proteina; // proteinas (g)
-    /* O campo 'categoria' NÃO EXISTE no binário, mas é essencial para a estrutura do P2. 
-       Ele será inicializado como CATEGORIA_DESCONHECIDA na leitura do binário, forçando 
-       todos os alimentos para a Categoria 0 (Desconhecida) */
-    Categoria categoria; 
+    char descricao[50]; 
+    float energia; 
+    float proteina;
+    int categoria_id;
+} __attribute__((packed)) AlimentoBin;
+
+/* Estrutura de dados completa para uso no P2 */
+typedef struct {
+    int codigo;
+    char descricao[50]; 
+    float energia; 
+    float proteina; 
+    int categoria_id; 
+    Categoria categoria; // Campo extra: calculado ou convertido APÓS A LEITURA.
 } AlimentoDados;
 
 
@@ -49,13 +55,13 @@ typedef struct NoArvore {
 typedef struct NoCategoria {
     Categoria id;
     char nome[MAX_DESC]; 
-    
+
     NoAlimento *lista_alimentos_head; 
     int total_alimentos;
 
     NoArvore *arvore_energia_root; 
     NoArvore *arvore_proteina_root; 
-    
+
     struct NoCategoria *prox; 
 } NoCategoria;
 
