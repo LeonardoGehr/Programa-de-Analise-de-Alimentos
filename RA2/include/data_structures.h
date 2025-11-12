@@ -50,7 +50,7 @@ typedef struct NoCategoria {
     Categoria id;
     char nome[MAX_DESC]; 
     
-    NoAlimento *lista_alimentos_head; 
+    NoAlimento *lista_alimentos_head;
     int total_alimentos;
 
     NoArvore *arvore_energia_root; 
