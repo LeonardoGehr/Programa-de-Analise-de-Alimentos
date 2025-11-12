@@ -1,294 +1,184 @@
-#include "data_structure.h"
-#include "file_format.h"
-#include "file_reading.h" // Inclui as funções de leitura/escrita BIN/Memória
-#include "formatter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <locale.h>
+#include "data_structures.h"
+#include "file_format.h"
 
-#define ARQUIVO_BIN "alimentos.bin"
+// -------------------- Estruturas locais --------------------
 
-// --- Protótipos da Interface de Menu ---
-void exibirMenu(void);
-void adicionarNovoAlimento(NoCategoria **lista_categorias);
-void processarOpcao(int opcao, NoCategoria **lista_categorias);
-int lerInteiroPositivo(const char *mensagem);
-float lerFloatPositivo(const char *mensagem);
+typedef struct NoAlimento {
+    Alimento alimento;
+    struct NoAlimento *prox;
+} NoAlimento;
+
+typedef struct NoCategoria {
+    Categoria idCategoria;
+    char nome[50];
+    NoAlimento *listaAlimentos;
+    struct NoCategoria *prox;
+} NoCategoria;
+
+// -------------------- Funções auxiliares --------------------
+
+// Retorna o nome textual da categoria
+const char* nomeCategoria(Categoria c) {
+    switch (c) {
+        case CEREAIS: return "Cereais e derivados";
+        case VERDURAS: return "Verduras, hortaliças e derivados";
+        case FRUTAS: return "Frutas e derivados";
+        case GORDURAS: return "Gorduras e óleos";
+        case PESCADOS: return "Pescados e frutos do mar";
+        case CARNES: return "Carnes e derivados";
+        case LACTEOS: return "Leite e derivados";
+        case BEBIDAS: return "Bebidas (alcoólicas e não alcoólicas)";
+        case OVOS: return "Ovos e derivados";
+        case ACUCARES: return "Produtos açucarados";
+        case MISCELANEAS: return "Miscelâneas";
+        case INDUSTRIALIZADOS: return "Outros alimentos industrializados";
+        case PREPARADOS: return "Alimentos preparados";
+        case LEGUMINOSAS: return "Leguminosas e derivados";
+        case NOZES: return "Nozes e sementes";
+        default: return "Categoria desconhecida";
+    }
+}
+
+// Insere categoria na lista em ordem alfabética
+NoCategoria* inserirCategoriaOrdenada(NoCategoria **inicio, Categoria cat) {
+    NoCategoria *novo = (NoCategoria*) malloc(sizeof(NoCategoria));
+    novo->idCategoria = cat;
+    strcpy(novo->nome, nomeCategoria(cat));
+    novo->listaAlimentos = NULL;
+    novo->prox = NULL;
+
+    if (*inicio == NULL || strcmp(novo->nome, (*inicio)->nome) < 0) {
+        novo->prox = *inicio;
+        *inicio = novo;
+        return novo;
+    }
+
+    NoCategoria *atual = *inicio;
+    while (atual->prox && strcmp(novo->nome, atual->prox->nome) > 0)
+        atual = atual->prox;
+
+    novo->prox = atual->prox;
+    atual->prox = novo;
+    return novo;
+}
+
+// Busca uma categoria existente na lista
+NoCategoria* buscarCategoria(NoCategoria *inicio, Categoria cat) {
+    while (inicio) {
+        if (inicio->idCategoria == cat)
+            return inicio;
+        inicio = inicio->prox;
+    }
+    return NULL;
+}
+
+// Lê dados do binário e cria a lista de categorias
+NoCategoria* lerBinario(const char *nomeArquivo, int *totalLidos) {
+    FILE *f = fopen(nomeArquivo, "rb");
+    if (!f) {
+        printf("Erro ao abrir o arquivo binário '%s'.\n", nomeArquivo);
+        exit(1);
+    }
+
+    NoCategoria *listaCategorias = NULL;
+    *totalLidos = 0;
+
+    Alimento temp;
+    while (fread(&temp, sizeof(Alimento), 1, f) == 1) {
+        (*totalLidos)++;
+
+        // Busca ou insere categoria
+        NoCategoria *cat = buscarCategoria(listaCategorias, (Categoria)temp.categoria);
+        if (!cat)
+            cat = inserirCategoriaOrdenada(&listaCategorias, (Categoria)temp.categoria);
+
+        // Cria nó de alimento
+        NoAlimento *novoAlim = (NoAlimento*) malloc(sizeof(NoAlimento));
+        novoAlim->alimento = temp;
+        novoAlim->prox = cat->listaAlimentos;
+        cat->listaAlimentos = novoAlim;
+    }
+
+    fclose(f);
+    return listaCategorias;
+}
+
+// Lista todas as categorias
+void listarCategorias(NoCategoria *inicio) {
+    printf("\n--- Lista de Categorias ---\n");
+    if (!inicio) {
+        printf("(Nenhuma categoria carregada)\n");
+        return;
+    }
+
+    int i = 1;
+    while (inicio) {
+        printf("%2d. %s\n", i++, inicio->nome);
+        inicio = inicio->prox;
+    }
+}
+
+// Libera toda memória alocada
+void liberarMemoria(NoCategoria *inicio) {
+    while (inicio) {
+        NoCategoria *catTemp = inicio;
+        inicio = inicio->prox;
+
+        NoAlimento *alim = catTemp->listaAlimentos;
+        while (alim) {
+            NoAlimento *aTemp = alim;
+            alim = alim->prox;
+            free(aTemp);
+        }
+        free(catTemp);
+    }
+}
+
+// -------------------- Menu principal --------------------
+
+void exibirMenu() {
+    printf("\n===== MENU PRINCIPAL =====\n");
+    printf("1 - Listar categorias\n");
+    printf("9 - Sair\n");
+    printf("===========================\n");
+    printf("Escolha uma opção: ");
+}
+
+// -------------------- Função main --------------------
 
 int main() {
-    // Configura o locale para permitir acentuação e formatação correta em português
-    setlocale(LC_ALL, "pt_BR.utf8");
-    
-    NoCategoria *lista_categorias = NULL; // Ponteiro para o início da lista de categorias
+    NoCategoria *categorias = NULL;
+    int total = 0;
+
+    categorias = lerBinario("dados.bin", &total);
+    printf("Arquivo carregado com sucesso! %d alimentos lidos.\n", total);
+
     int opcao;
-    int total_lido = 0;
-
-    printf("=== Processo P2: Manipulação e Consultas de Dados Nutricionais ===\n");
-
-    // 1. Leitura do arquivo BIN para a memória (Requisito C.a)
-    printf("Carregando dados do arquivo binário (%s) para a memória...\n", ARQUIVO_BIN);
-    total_lido = lerBINparaMemoria(ARQUIVO_BIN, &lista_categorias);
-    
-    if (total_lido > 0) {
-        printf("Sucesso! %d alimentos carregados e organizados nas listas.\n", total_lido);
-        
-        // 2. Construção das árvores de indexação (Requisito C.b)
-        printf("Construindo árvores de indexação (Energia e Proteína) para cada categoria...\n");
-        construirTodasAsArvores(lista_categorias);
-        printf("Árvores construídas com sucesso.\n");
-
-        // 3. Loop do Menu Interativo
-        do {
-            exibirMenu();
-            printf("Escolha uma opção: ");
-            if (scanf("%d", &opcao) != 1) {
-                // Limpa o buffer em caso de entrada não numérica
-                while (getchar() != '\n');
-                opcao = -1; // Garante que caia no default e repita
-            }
-            processarOpcao(opcao, &lista_categorias);
-        } while (opcao != 0);
-
-        // 4. Saída: Salvar e liberar memória (Requisito C.c.9)
-        printf("\n--- Salvando Dados ---\n");
-        int total_salvo = escreverMemoriaParaBIN(ARQUIVO_BIN, lista_categorias);
-        if (total_salvo > 0) {
-             printf("Sucesso! %d alimentos salvos de volta no arquivo BIN.\n", total_salvo);
-        } else if (total_salvo == 0) {
-             printf("Aviso: Nenhum dado foi salvo. A lista de alimentos estava vazia.\n");
-        } else {
-             printf("ERRO: Falha ao salvar os dados de volta no arquivo BIN.\n");
+    do {
+        exibirMenu();
+        if (scanf("%d", &opcao) != 1) {
+            printf("Entrada inválida.\n");
+            break;
         }
-        
-        printf("\nLiberando memória alocada...\n");
-        liberarListaCategorias(lista_categorias);
-        printf("Estruturas liberadas. Programa finalizado.\n");
 
-    } else {
-        printf("ERRO: Falha ao carregar dados. O arquivo BIN pode estar vazio ou inexistente. (Total lido: %d)\n", total_lido);
-    }
+        switch (opcao) {
+            case 1:
+                listarCategorias(categorias);
+                break;
 
+            case 9:
+                printf("Encerrando o programa...\n");
+                break;
+
+            default:
+                printf("Opção inválida!\n");
+                break;
+        }
+    } while (opcao != 9);
+
+    liberarMemoria(categorias);
     return 0;
-}
-
-// --- Implementação das Funções de Menu e Utilitárias ---
-
-void exibirMenu(void) {
-    printf("\n======================================================\n");
-    printf("                  MENU DE OPERAÇÕES P2\n");
-    printf("======================================================\n");
-    printf("  [C.c] Consultas e Listagens:\n");
-    printf("  1. Listar Categorias (Req. 1)\n");
-    printf("  2. Listar Alimentos de uma Categoria (Ordem Alfabética, Req. 2)\n");
-    printf("  3. Listar Alimentos de uma Categoria (Ordem Decrescente de Energia, Req. 3)\n");
-    printf("  4. Listar Alimentos de uma Categoria (Ordem Decrescente de Proteína, Req. 4)\n");
-    printf("  5. Buscar Alimentos por Intervalo de Energia (Req. 5)\n");
-    printf("  6. Buscar Alimentos por Intervalo de Proteína (Req. 6)\n");
-    printf("------------------------------------------------------\n");
-    printf("  [C.c] Inserção e Remoção:\n");
-    printf("  7. Remover uma Categoria e todos seus Alimentos (Req. 7)\n");
-    printf("  8. Remover um Alimento específico (Req. 8)\n");
-    printf("  9. Adicionar um Novo Alimento\n");
-    printf("------------------------------------------------------\n");
-    printf("  0. Sair e Salvar Alterações (Req. 9)\n");
-    printf("======================================================\n");
-}
-
-/* Função para ler inteiros não negativos com validação */
-int lerInteiroPositivo(const char *mensagem) {
-    int valor;
-    while (1) {
-        printf("%s", mensagem);
-        if (scanf("%d", &valor) == 1) {
-            if (valor >= 0) {
-                // Limpa o buffer de entrada
-                while (getchar() != '\n');
-                return valor;
-            } else {
-                printf("Valor deve ser não negativo. Tente novamente.\n");
-            }
-        } else {
-            printf("Entrada inválida. Digite um número inteiro.\n");
-            // Limpa o buffer de entrada
-            while (getchar() != '\n');
-        }
-    }
-}
-
-/* Função para ler floats não negativos com validação */
-float lerFloatPositivo(const char *mensagem) {
-    float valor;
-    while (1) {
-        printf("%s", mensagem);
-        if (scanf("%f", &valor) == 1) {
-            if (valor >= 0.0f) {
-                // Limpa o buffer de entrada
-                while (getchar() != '\n');
-                return valor;
-            } else {
-                printf("Valor deve ser não negativo. Tente novamente.\n");
-            }
-        } else {
-            printf("Entrada inválida. Digite um número decimal (float).\n");
-            // Limpa o buffer de entrada
-            while (getchar() != '\n');
-        }
-    }
-}
-
-/* Adiciona um novo alimento à estrutura de dados (Menu 9) */
-void adicionarNovoAlimento(NoCategoria **lista_categorias) {
-    Alimento novo_alimento;
-    memset(&novo_alimento, 0, sizeof(Alimento));
-    char nome_cat_str[TAM_NOME_CATEGORIA];
-    
-    printf("\n--- Inserir Novo Alimento ---\n");
-    
-    // 1. Código
-    novo_alimento.codigo = lerInteiroPositivo("Digite o Código do Alimento (ID): ");
-    
-    // 2. Nome
-    printf("Digite o Nome do Alimento: ");
-    if (fgets(novo_alimento.nome, sizeof(novo_alimento.nome), stdin) != NULL) {
-        removerQuebraLinha(novo_alimento.nome);
-    } else {
-        printf("Erro na leitura do nome.\n");
-        return;
-    }
-    
-    // 3. Energia e Proteína
-    novo_alimento.calorias = lerFloatPositivo("Digite o valor de Energia (Calorias): ");
-    novo_alimento.proteinas = lerFloatPositivo("Digite o valor de Proteína: ");
-
-    // 4. Categoria
-    printf("Digite o Nome da Categoria (ex: Cereais, Pescados): ");
-    if (fgets(nome_cat_str, sizeof(nome_cat_str), stdin) != NULL) {
-        removerQuebraLinha(nome_cat_str);
-    } else {
-        printf("Erro na leitura da categoria.\n");
-        return;
-    }
-    
-    novo_alimento.categoria = nomeParaCategoria(nome_cat_str);
-    if (novo_alimento.categoria == CAT_INVALIDA) {
-        printf("Categoria digitada não é válida. Inserção cancelada.\n");
-        return;
-    }
-    
-    // 5. Inserção na Lista Ligada de Categorias e Alimentos
-    if (inserirAlimento(lista_categorias, &novo_alimento)) {
-        printf("\nAlimento '%s' inserido com sucesso na lista de '%s'.\n", 
-               novo_alimento.nome, obterNomeCategoria(novo_alimento.categoria));
-        
-        // 6. Atualiza as Árvores da Categoria Afetada
-        NoCategoria *cat_afetada = buscarCategoriaPorId(*lista_categorias, novo_alimento.categoria);
-        if (cat_afetada) {
-            // Reconstrução simples das árvores da categoria afetada após a inserção
-            construirArvores(cat_afetada);
-            printf("Árvores de indexação da categoria atualizadas.\n");
-        }
-        
-    } else {
-        printf("Falha na inserção do alimento. (Pode ser código duplicado ou erro de alocação)\n");
-    }
-}
-
-
-/* Processa a opção escolhida pelo usuário */
-void processarOpcao(int opcao, NoCategoria **lista_categorias) {
-    Categoria cat_id;
-    NoCategoria *categoria;
-    int codigo_alimento;
-    float min_val, max_val;
-
-    switch (opcao) {
-        case 1: // Listar Categorias (Req. 1)
-            listarCategorias(*lista_categorias);
-            break;
-
-        case 2: // Listar Alimentos (Ordem Alfabética, Req. 2)
-        case 3: // Listar Alimentos (Ordem Decrescente Energia, Req. 3)
-        case 4: { // Listar Alimentos (Ordem Decrescente Proteína, Req. 4)
-            cat_id = (Categoria)lerInteiroPositivo("Digite o ID da Categoria a listar: ");
-            categoria = buscarCategoriaPorId(*lista_categorias, cat_id);
-            
-            if (categoria == NULL) {
-                printf("Erro: Categoria com ID %d não encontrada.\n", cat_id);
-                break;
-            }
-
-            if (opcao == 2) {
-                listarAlimentosPorLista(categoria);
-            } else if (opcao == 3) {
-                printf("\n--- Alimentos da Categoria: %s (Decrescente de Energia) ---\n", categoria->nome);
-                imprimirCabecalhoTabela();
-                listarDecrescente(categoria->arvore_energia);
-                imprimirRodapeTabela(-1); 
-            } else if (opcao == 4) {
-                printf("\n--- Alimentos da Categoria: %s (Decrescente de Proteína) ---\n", categoria->nome);
-                imprimirCabecalhoTabela();
-                listarDecrescente(categoria->arvore_proteina);
-                imprimirRodapeTabela(-1);
-            }
-            break;
-        }
-
-        case 5: // Buscar por Intervalo de Energia (Req. 5)
-        case 6: { // Buscar por Intervalo de Proteína (Req. 6)
-            cat_id = (Categoria)lerInteiroPositivo("Digite o ID da Categoria para buscar: ");
-            categoria = buscarCategoriaPorId(*lista_categorias, cat_id);
-            
-            if (categoria == NULL) {
-                printf("Erro: Categoria com ID %d não encontrada.\n", cat_id);
-                break;
-            }
-            
-            min_val = lerFloatPositivo("Digite o valor MÍNIMO do intervalo: ");
-            max_val = lerFloatPositivo("Digite o valor MÁXIMO do intervalo: ");
-            
-            if (min_val > max_val) {
-                printf("Erro: O valor mínimo não pode ser maior que o valor máximo.\n");
-                break;
-            }
-
-            if (opcao == 5) {
-                buscarPorIntervalo(categoria->arvore_energia, min_val, max_val, "Energia (Calorias)");
-            } else {
-                buscarPorIntervalo(categoria->arvore_proteina, min_val, max_val, "Proteína");
-            }
-            break;
-        }
-
-        case 7: { // Remover Categoria (Req. 7)
-            cat_id = (Categoria)lerInteiroPositivo("Digite o ID da Categoria a ser removida: ");
-            if (removerCategoria(lista_categorias, cat_id)) {
-                printf("Sucesso: Categoria ID %d e todos os seus alimentos foram removidos.\n", cat_id);
-            } else {
-                printf("Erro: Categoria com ID %d não encontrada.\n", cat_id);
-            }
-            break;
-        }
-
-        case 8: { // Remover Alimento (Req. 8)
-            codigo_alimento = lerInteiroPositivo("Digite o Código do Alimento a ser removido: ");
-            if (removerAlimento(lista_categorias, codigo_alimento)) {
-                printf("Sucesso: Alimento com código %d foi removido e árvores reconstruídas.\n", codigo_alimento);
-            } else {
-                printf("Erro: Alimento com código %d não encontrado em nenhuma categoria.\n", codigo_alimento);
-            }
-            break;
-        }
-
-        case 9: // Adicionar Novo Alimento
-            adicionarNovoAlimento(lista_categorias);
-            break;
-
-        case 0:
-            printf("Opção Sair selecionada. Preparando-se para salvar dados e finalizar.\n");
-            break;
-            
-        default:
-            printf("Opção inválida. Tente novamente.\n");
-    }
 }
