@@ -83,7 +83,7 @@ int inserirAlimento(NoCategoria **lista_categorias_head, AlimentoDados *dados);
 /* Funções de Menu (Implementadas em outro .c) */
 void listarCategorias(NoCategoria *head);
 void listarAlimentosPorLista(NoCategoria *no_cat);
-void listarAlimentosPorEnergia(NoCategoria *no_cat);
+void listarAlimentosPorEnergia(const char *caminho);
 void listarAlimentosPorProteina(NoCategoria *no_cat);
 void listarAlimentosPorEnergiaIntervalo(NoCategoria *no_cat);
 void listarAlimentosPorProteinaIntervalo(NoCategoria *no_cat);
