@@ -7,6 +7,7 @@
 
 #define PATH_DADOS "source/dados.bin"
 
+void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head);
 static int category_counts[NUM_CATEGORIAS + 1]; // 1..15
 
 /* FUNÇÕES AUXILIARES */
@@ -659,14 +660,40 @@ void listarAlimentosPorIntervaloProteina(NoCategoria *lista_categorias_head) {
     printf("Total de alimentos exibidos: %d\n", contador);
 }
 
-/* Opção 7: Remover uma categoria */
+/* BACKUP INICIAL */
+void criarBackupInicial(const char *caminho_original) {
+    const char *backup = "dados_original.bin";
+    FILE *orig = fopen(caminho_original, "rb");
+    if (!orig) {
+        printf("❌ Erro: não foi possível abrir '%s' para backup.\n", caminho_original);
+        exit(1);
+    }
+
+    FILE *bkp = fopen(backup, "wb");
+    if (!bkp) {
+        printf("❌ Erro: não foi possível criar backup '%s'.\n", backup);
+        fclose(orig);
+        exit(1);
+    }
+
+    char buffer[1024];
+    size_t lidos;
+    while ((lidos = fread(buffer, 1, sizeof(buffer), orig)) > 0) {
+        fwrite(buffer, 1, lidos, bkp);
+    }
+
+    fclose(orig);
+    fclose(bkp);
+    printf("✅ Backup inicial criado como '%s'.\n", backup);
+}
+
+/* OPÇÃO 7: REMOVER CATEGORIA */
 NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados) {
     if (!head) {
         printf("Nenhuma categoria carregada.\n");
         return head;
     }
 
-    /* Mostra lista de categorias (índice 1..n) */
     NoCategoria *ptr = head;
     int n = 0;
     printf("\n--- Lista de Categorias ---\n");
@@ -685,7 +712,6 @@ NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados) {
     }
     while (getchar() != '\n');
 
-    /* Localiza o nó correspondente (anterior + atual) */
     NoCategoria *anterior = NULL;
     NoCategoria *atual = head;
     int idx = 1;
@@ -695,36 +721,20 @@ NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados) {
         idx++;
     }
 
-    if (!atual) {
-        printf("Categoria não encontrada.\n");
-        return head;
-    }
+    if (!atual) return head;
 
-    /* libera lista de alimentos da categoria */
+    /* libera memória da categoria */
     NoAlimento *a = atual->lista_alimentos_head;
     while (a) {
         NoAlimento *tmp = a;
         a = a->prox;
         free(tmp);
     }
+    liberarArvore(atual->arvore_energia_root);
+    liberarArvore(atual->arvore_proteina_root);
 
-    /* função local para liberar árvore */
-    void liberarArvoreLocal(NoArvore *r) {
-        if (!r) return;
-        liberarArvoreLocal(r->esq);
-        liberarArvoreLocal(r->dir);
-        free(r);
-    }
-
-    liberarArvoreLocal(atual->arvore_energia_root);
-    liberarArvoreLocal(atual->arvore_proteina_root);
-
-    /* remove da lista encadeada */
-    if (anterior == NULL) {      /* é o primeiro */
-        head = atual->prox;
-    } else {
-        anterior->prox = atual->prox;
-    }
+    if (anterior == NULL) head = atual->prox;
+    else anterior->prox = atual->prox;
 
     printf("Categoria '%s' removida com sucesso!\n", atual->nome);
     free(atual);
@@ -733,15 +743,14 @@ NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados) {
     return head;
 }
 
-
-/* Opção 8: Remover um alimento específico */
+/* OPÇÃO 8: REMOVER ALIMENTO ESPECÍFICO */
 void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
     if (!head) {
         printf("Nenhuma categoria carregada.\n");
         return;
     }
 
-    /* Lista categorias para escolha */
+    /* Lista categorias */
     NoCategoria *cat = head;
     int idx_cat = 1;
     printf("\n--- Categorias ---\n");
@@ -760,13 +769,11 @@ void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
     }
     while (getchar() != '\n');
 
-    /* encontra a categoria selecionada */
     cat = head;
     for (int i = 1; i < escolha_cat && cat; i++) cat = cat->prox;
-    if (!cat) { printf("Categoria inexistente.\n"); return; }
-    if (!cat->lista_alimentos_head) { printf("Categoria vazia.\n"); return; }
+    if (!cat || !cat->lista_alimentos_head) { printf("Categoria vazia.\n"); return; }
 
-    /* Lista alimentos da categoria (índice 1..m) */
+    /* Lista alimentos */
     NoAlimento *a = cat->lista_alimentos_head;
     int idx = 1;
     printf("\n--- Alimentos em %s ---\n", cat->nome);
@@ -786,8 +793,6 @@ void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
     }
     while (getchar() != '\n');
 
-    
-    /* Remove da lista encadeada da categoria */
     NoAlimento *atual = cat->lista_alimentos_head;
     NoAlimento *anterior = NULL;
     int contador = 1;
@@ -799,28 +804,19 @@ void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
 
     if (!atual) { printf("Alimento não encontrado.\n"); return; }
 
-    if (anterior == NULL)
-        cat->lista_alimentos_head = atual->prox;
-    else
-        anterior->prox = atual->prox;
+    if (!anterior) cat->lista_alimentos_head = atual->prox;
+    else anterior->prox = atual->prox;
 
     printf("Alimento '%s' removido da categoria '%s'.\n", atual->dados.descricao, cat->nome);
     free(atual);
-    cat->total_alimentos = 0; /* vamos recalcular abaixo */
 
-    /* libera árvores antigas */
-    void liberarArvoreLocal(NoArvore *r) {
-        if (!r) return;
-        liberarArvoreLocal(r->esq);
-        liberarArvoreLocal(r->dir);
-        free(r);
-    }
-    liberarArvoreLocal(cat->arvore_energia_root);
-    liberarArvoreLocal(cat->arvore_proteina_root);
+    /* Reconstroi árvores */
+    liberarArvore(cat->arvore_energia_root);
+    liberarArvore(cat->arvore_proteina_root);
     cat->arvore_energia_root = NULL;
     cat->arvore_proteina_root = NULL;
+    cat->total_alimentos = 0;
 
-    /* Reconstroi as árvores a partir da lista encadeada atualizada */
     NoAlimento *tmp = cat->lista_alimentos_head;
     while (tmp) {
         cat->arvore_energia_root = inserirNoArvoreEnergia(cat->arvore_energia_root, tmp);
@@ -830,46 +826,19 @@ void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
     }
 
     if (alteracao_dados) *alteracao_dados = 1;
-    printf("Árvores da categoria '%s' atualizadas.\n", cat->nome);
 }
 
-/* Opção 9: Encerrar e salvar em novo arquivo */
-void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head) {
-    if (!caminho || !head) {
-        printf("Nada para salvar.\n");
-        return;
+/* OPÇÃO 9: ENCERRAR E SALVAR */
+void encerrarPrograma(const char *caminho, NoCategoria *head, int alteracao_dados) {
+    if (alteracao_dados) {
+        salvarDadosBinariosAtualizado(caminho, head);
+    } else {
+        printf("\nNenhuma alteração detectada. Encerrando.\n");
     }
-
-    FILE *f = fopen(caminho, "wb");
-    if (!f) {
-        printf("Erro ao abrir '%s' para escrita.\n", caminho);
-        return;
-    }
-
-    int total = 0;
-    NoCategoria *cat = head;
-    while (cat) {
-        NoAlimento *a = cat->lista_alimentos_head;
-        while (a) {
-            /* Converte AlimentoDados -> Alimento (formato P1 / file_format.h) */
-            Alimento out;
-            out.codigo = a->dados.codigo;
-            /* 'nome' tem tamanho 50 em file_format.h */
-            strncpy(out.nome, a->dados.descricao, sizeof(out.nome) - 1);
-            out.nome[sizeof(out.nome) - 1] = '\0';
-            out.calorias = a->dados.energia;
-            out.proteinas = a->dados.proteina;
-
-            fwrite(&out, sizeof(Alimento), 1, f);
-            total++;
-            a = a->prox;
-        }
-        cat = cat->prox;
-    }
-
-    fclose(f);
-    printf("✅ %d alimentos foram salvos em '%s' com sucesso!\n", total, caminho);
+    liberarListaCategorias(head);
+    printf("Programa encerrado.\n");
 }
+
 
 
 
@@ -886,6 +855,7 @@ int main(void) {
     printf("===========================================\n\n");
 
     const char *caminho = PATH_DADOS;
+    criarBackupInicial(caminho);
     NoCategoria *lista_categorias_head = construirEstruturasCategorias(caminho);
     if (!lista_categorias_head) {
         printf("Erro ao construir estruturas de categorias.\n");
@@ -952,16 +922,8 @@ int main(void) {
                 removerAlimentoEspecifico(lista_categorias_head, &alteracao_dados);
                 break;
             case 9:
-                if (alteracao_dados) {
-                    salvarDadosBinariosAtualizado("arquivo_alterado.bin", lista_categorias_head);
-                } else {
-                    printf("\nNenhuma alteração detectada. Encerrando.\n");
-                }
-                liberarListaCategorias(lista_categorias_head);
-                printf("Programa encerrado.\n");
+                encerrarPrograma(caminho, lista_categorias_head, alteracao_dados);
                 break;
-            default:
-                printf("Opção inválida.\n");
         }
     } while (opcao != 9);
 

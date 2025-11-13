@@ -341,9 +341,98 @@ void pausar(void) {
     while ((c = getchar()) != '\n' && c != EOF) { }
 }
 
+int alteracao_dados = 0; // flag global ou estática
+
+/* Remove categoria por índice (1-15) */
+void removerCategoria() {
+    int escolha;
+    listarCategorias();
+    printf("Digite o numero da categoria a remover: ");
+    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha > 15) { 
+        while(getchar()!='\n'); 
+        printf("Entrada invalida.\n"); 
+        return; 
+    }
+    while(getchar()!='\n');
+
+    Categoria cat = intParaCategoria(escolha);
+    int count = 0;
+    for (int i = 0; i < total_alimentos; i++) {
+        if (alimentos[i].categoria == cat) {
+            alimentos[i] = alimentos[total_alimentos - 1]; // sobrescreve com último
+            total_alimentos--;
+            i--; // reavalia posição atual
+            count++;
+        }
+    }
+    if (count > 0) {
+        printf("Categoria '%s' removida com %d alimento(s) deletado(s).\n", obterNomeCategoria(cat), count);
+        alteracao_dados = 1;
+    } else {
+        printf("Nenhum alimento encontrado nesta categoria.\n");
+    }
+}
+
+/* Remove alimento específico por ID */
+void removerAlimentoEspecifico() {
+    int id;
+    printf("Digite o ID do alimento a remover: ");
+    if (scanf("%d", &id) != 1) { while(getchar()!='\n'); printf("Entrada invalida.\n"); return; }
+    while(getchar()!='\n');
+
+    int encontrado = 0;
+    for (int i = 0; i < total_alimentos; i++) {
+        if (alimentos[i].numero_do_alimento == id) {
+            alimentos[i] = alimentos[total_alimentos - 1]; // sobrescreve com último
+            total_alimentos--;
+            encontrado = 1;
+            alteracao_dados = 1;
+            break;
+        }
+    }
+    if (encontrado) printf("Alimento com ID %d removido.\n", id);
+    else printf("Alimento com ID %d nao encontrado.\n", id);
+}
+
+/* Salva alterações em dados.bin */
+void salvarDadosBinarios() {
+    if (!alteracao_dados) return;
+
+    FILE *f = fopen("dados.bin", "wb");
+    if (!f) { printf("Erro ao salvar dados.bin\n"); return; }
+
+    fwrite(alimentos, sizeof(Alimento), total_alimentos, f);
+    fclose(f);
+    printf("Alteracoes salvas em dados.bin\n");
+    alteracao_dados = 0;
+}
+
+
 /* Função principal com menu (parte B do trabalho) */
 int main(void) {
     setlocale(LC_ALL, ""); // configura localidade
+    /* Backup inicial do arquivo dados.bin */
+    FILE *orig = fopen("dados.bin", "rb");
+    if (orig) {
+        FILE *bkp = fopen("dados_original.bin", "wb");
+        if (bkp) {
+            char buffer[1024];
+            size_t lidos;
+            while ((lidos = fread(buffer, 1, sizeof(buffer), orig)) > 0) {
+                fwrite(buffer, 1, lidos, bkp);
+            }
+            fclose(bkp);
+            printf("Backup inicial criado: dados_original.bin\n");
+        } else {
+            printf("Erro ao criar backup.\n");
+            fclose(orig);
+            return 1;
+        }
+        fclose(orig);
+    } else {
+        printf("Arquivo dados.bin nao encontrado. Backup nao criado.\n");
+    }
+
 
     if (!lerArquivoCSV("lista_de_alimentos.csv")) { // condicional: se não carregou arquivo
         printf("Erro ao carregar arquivo 'lista_de_alimentos.csv'.\n");
