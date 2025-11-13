@@ -35,7 +35,7 @@ typedef struct {
 Alimento alimentos[MAX_ALIMENTOS];
 int total_alimentos = 0;
 
-/* --- Funções utilitárias de processamento de strings --- */
+/* Funções utilitárias de processamento de strings */
 
 /* Remove \n e \r do final da string */
 void removerQuebraLinha(char *str) {
@@ -125,7 +125,7 @@ const char* obterNomeCategoria(Categoria cat) {
     return "Desconhecida";
 }
 
-/* --- Leitura do CSV (parte A do trabalho) --- */
+/* Leitura do CSV (parte A do trabalho) */
 
 /* Lê arquivo CSV e preenche o vetor global alimentos[] */
 int lerArquivoCSV(const char *nome_arquivo) {
@@ -199,7 +199,7 @@ int lerArquivoCSV(const char *nome_arquivo) {
     return 1; // sucesso
 }
 
-/* --- Funções de impressão de tabela --- */
+/* Funções de impressão de tabela */
 
 /* Imprime cabeçalho da tabela */
 void imprimirCabecalhoTabela(void) {
@@ -224,7 +224,7 @@ void imprimirRodapeTabela(int total) {
     printf("Total: %d alimento(s) encontrado(s)\n", total);
 }
 
-/* --- Funções de filtragem e ordenação (requisito 3: não replicar vetor inteiro) --- */
+/* Funções de filtragem e ordenação (requisito 3: não replicar vetor inteiro) */
 
 /* Filtra por categoria e retorna ponteiros para os alimentos filtrados */
 int filtrarPorCategoria(Categoria cat, Alimento *resultado[], int max_resultado) {
@@ -279,7 +279,7 @@ float extrairCarboidrato(const Alimento *a) { return a->carboidrato; }
 float extrairRelacaoEnergiaProteina(const Alimento *a) { return (a->proteina > 0) ? (a->energia / a->proteina) : 0.0f; }
 float extrairRelacaoEnergiaCarboidrato(const Alimento *a) { return (a->carboidrato > 0) ? (a->energia / a->carboidrato) : 0.0f; }
 
-/* --- Funções de listagem conforme opções do enunciado --- */
+/* Funções de listagem conforme opções do enunciado */
 
 /* Lista categorias (simples) */
 void listarCategorias(void) {
@@ -333,7 +333,7 @@ void listarTopNPorCriterio(Categoria cat, float (*extrairValor)(const Alimento*)
     imprimirRodapeTabela(n);
 }
 
-/* --- Função para pausar (aguardar ENTER) --- */
+/* Função para pausar (aguardar ENTER) */
 void pausar(void) {
     int c;
     printf("\nPressione ENTER para continuar...");
@@ -341,7 +341,7 @@ void pausar(void) {
     while ((c = getchar()) != '\n' && c != EOF) { }
 }
 
-/* --- Função principal com menu (parte B do trabalho) --- */
+/* Função principal com menu (parte B do trabalho) */
 int main(void) {
     setlocale(LC_ALL, ""); // configura localidade
 

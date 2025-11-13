@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* --- Requisito 1: ENUM para categorias --- */
+/* Requisito 1: ENUM para categorias */
 typedef enum {
     CEREAIS = 1, VERDURAS, FRUTAS, GORDURAS, PESCADOS,
     CARNES, LACTEOS, BEBIDAS, OVOS, ACUCARES,
@@ -22,14 +22,11 @@ typedef struct {
     char descricao[MAX_DESC]; // nome
     float energia; // calorias (Kcal)
     float proteina; // proteinas (g)
-    /* O campo 'categoria' NÃO EXISTE no binário, mas é essencial para a estrutura do P2. 
-       Ele será inicializado como CATEGORIA_DESCONHECIDA na leitura do binário, forçando 
-       todos os alimentos para a Categoria 0 (Desconhecida) */
     Categoria categoria; 
 } AlimentoDados;
 
 
-/* --- Estrutura de Lista Ligada de Alimentos (Nó de Alimento) --- */
+/* Estrutura de Lista Ligada de Alimentos (Nó de Alimento) */
 typedef struct NoAlimento {
     AlimentoDados dados;
     struct NoAlimento *prox; 
@@ -37,7 +34,7 @@ typedef struct NoAlimento {
     void *no_arvore_proteina;
 } NoAlimento;
 
-/* --- Estrutura de Nó de Árvore Binária de Indexação --- */
+/* Estrutura de Nó de Árvore Binária de Indexação */
 typedef struct NoArvore {
     float chave; 
     NoAlimento *ptr_alimento; 
@@ -45,7 +42,7 @@ typedef struct NoArvore {
     struct NoArvore *dir;
 } NoArvore;
 
-/* --- Estrutura de Nó de Lista Ligada de Categorias --- */
+/* Estrutura de Nó de Lista Ligada de Categorias */
 typedef struct NoCategoria {
     Categoria id;
     char nome[MAX_DESC]; 
@@ -60,7 +57,7 @@ typedef struct NoCategoria {
 } NoCategoria;
 
 
-/* --- Protótipos de Funções --- */
+/* Protótipos de Funções */
 
 /* Funções de Utilidade */
 const char* obterNomeCategoria(Categoria cat);

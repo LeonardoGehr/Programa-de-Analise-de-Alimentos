@@ -9,9 +9,7 @@
 
 static int category_counts[NUM_CATEGORIAS + 1]; // 1..15
 
-/* ===========================================================
-   FUNÇÕES AUXILIARES
-   =========================================================== */
+/* FUNÇÕES AUXILIARES */
 
 int contarTotalAlimentos(NoCategoria *head) {
     int total = 0;
@@ -78,9 +76,7 @@ const char* nomeCategoria(Categoria c) {
     }
 }
 
-/* ===========================================================
-   FUNÇÕES PRINCIPAIS
-   =========================================================== */
+/* FUNÇÕES PRINCIPAIS */
 
 /* Lê o binário e conta alimentos por categoria */
 int lerBinarioContandoCategorias(const char *caminho) {
@@ -123,93 +119,14 @@ void listarCategoriasComContagem(NoCategoria *head) {
     }
 }
 
-/* Opção 6: Listar por intervalo de PROTEÍNA */
-void listarAlimentosPorIntervaloProteina(NoCategoria *lista_categorias_head) {
-    if (!lista_categorias_head) {
-        printf("Não há categorias carregadas.\n");
-        return;
-    }
+/* FUNÇÕES DE MENU */
 
-    int cat_id;
-    printf("\nDigite o numero da categoria desejada (1-%d): ", NUM_CATEGORIAS);
-    if (scanf("%d", &cat_id) != 1 || cat_id < 1 || cat_id > NUM_CATEGORIAS) {
-        int c; while ((c = getchar()) != '\n' && c != EOF) {}
-        printf("Entrada inválida.\n");
-        return;
-    }
-    while (getchar() != '\n'); // limpa buffer
-
-    NoCategoria *cat = buscarCategoriaPorID(lista_categorias_head, intParaCategoria(cat_id), NULL);
-    if (!cat) {
-        printf("Categoria não encontrada.\n");
-        return;
-    }
-
-    if (!cat->arvore_proteina_root) {
-        printf("Nenhum alimento cadastrado nesta categoria.\n");
-        return;
-    }
-
-    float min_prot, max_prot;
-    printf("Digite o valor minimo de proteina (g): ");
-    if (scanf("%f", &min_prot) != 1) { while(getchar() != '\n'); printf("Entrada inválida.\n"); return; }
-    printf("Digite o valor maximo de proteina (g): ");
-    if (scanf("%f", &max_prot) != 1) { while(getchar() != '\n'); printf("Entrada inválida.\n"); return; }
-    while(getchar() != '\n');
-
-    if (min_prot > max_prot) {
-        float tmp = min_prot;
-        min_prot = max_prot;
-        max_prot = tmp;
-    }
-
-    int contador = 0;
-    printf("\n--- Alimentos de %s com proteína entre %.2fg e %.2fg ---\n", cat->nome, min_prot, max_prot);
-    printf("Código | Descrição                                           | Proteína | Energia\n");
-    printf("-------+-----------------------------------------------------+----------+--------\n");
-
-    /* Função interna recursiva para percorrer árvore de proteína em ordem decrescente e filtrar */
-    void percorrerArvoreProteinaIntervalo(NoArvore *no) {
-        if (!no) return;
-
-        /* percorre direita primeiro = decrescente */
-        percorrerArvoreProteinaIntervalo(no->dir);
-
-        if (no->chave >= min_prot && no->chave <= max_prot) {
-            NoAlimento *a = no->ptr_alimento;
-            if (a) {
-                printf("%6d | %-45s | %8.2f | %6.2f\n",
-                       a->dados.codigo, a->dados.descricao,
-                       a->dados.proteina, a->dados.energia);
-                contador++;
-            }
-        }
-
-        /* percorre esquerda */
-        percorrerArvoreProteinaIntervalo(no->esq);
-    }
-
-    percorrerArvoreProteinaIntervalo(cat->arvore_proteina_root);
-
-    if (contador == 0)
-        printf("(Nenhum alimento encontrado neste intervalo)\n");
-
-    printf("-------+-----------------------------------------------------+----------+--------\n");
-    printf("Total de alimentos exibidos: %d\n", contador);
-}
-
-
-
-/* ===========================================================
-   FUNÇÕES DE MENU
-   =========================================================== */
-
-/* --- Opção 2: Listar todos os alimentos de uma categoria --- */
+/* Opção 2: Listar todos os alimentos de uma categoria */
 void listarAlimentosDeCategoria(const char *caminho) {
     int opc;
     printf("\nDigite o numero da categoria (1–15): ");
     if (scanf("%d", &opc) != 1 || opc < 1 || opc > NUM_CATEGORIAS) {
-        printf("❌ Categoria inválida.\n");
+        printf("Categoria inválida.\n");
         while (getchar() != '\n'); // limpa entrada
         return;
     }
@@ -217,7 +134,7 @@ void listarAlimentosDeCategoria(const char *caminho) {
     Categoria cat = (Categoria)opc;
     FILE *fp = fopen(caminho, "rb");
     if (!fp) {
-        printf("❌ Erro: não foi possível abrir o arquivo '%s'.\n", caminho);
+        printf("Erro: não foi possível abrir o arquivo '%s'.\n", caminho);
         return;
     }
 
@@ -252,7 +169,7 @@ void mostrarTopAlimentosEnergiaProteina(void) {
     printf("\n🔧 Função ainda não implementada: mostrar top alimentos por energia/proteína.\n");
 }
 
-/* ==================== Opção 3: Listar por ENERGIA (decrescente) ==================== */
+/* Opção 3: Listar por energia (decrescente) */
 /* Helpers: inserir alimento ordenado por nome, inserir na árvore por energia,
    percorrer árvore em ordem decrescente, liberar estruturas. */
 
@@ -449,7 +366,7 @@ void listarAlimentosPorEnergia(const char *caminho) {
     int opc;
     printf("\nDigite o número da categoria (1–15): ");
     if (scanf("%d", &opc) != 1 || opc < 1 || opc > NUM_CATEGORIAS) {
-        printf("❌ Categoria inválida.\n");
+        printf("Categoria inválida.\n");
         while (getchar() != '\n'); // limpa entrada
         return;
     }
@@ -459,7 +376,7 @@ void listarAlimentosPorEnergia(const char *caminho) {
 
     FILE *fp = fopen(caminho, "rb");
     if (!fp) {
-        printf("❌ Erro: não foi possível abrir o arquivo '%s'.\n", caminho);
+        printf("Erro: não foi possível abrir o arquivo '%s'.\n", caminho);
         return;
     }
 
@@ -590,7 +507,7 @@ void listarAlimentosPorProteina(NoCategoria *lista_categorias_head) {
     printf("\nTotal de alimentos exibidos: %d\n", cat->total_alimentos);
 }
 
-/* ==================== Opção 5: Listar alimentos por intervalo de energia ==================== */
+/* Opção 5: Listar alimentos por intervalo de energia */
 void listarAlimentosPorIntervaloEnergia(NoCategoria *lista_categorias_head) {
     if (!lista_categorias_head) {
         printf("Não há categorias carregadas.\n");
@@ -651,6 +568,313 @@ void listarAlimentosPorIntervaloEnergia(NoCategoria *lista_categorias_head) {
 
     percorrerArvoreIntervalo(cat->arvore_energia_root);
 }
+
+/* Opção 6: Listar por intervalo de proteína */
+void listarAlimentosPorIntervaloProteina(NoCategoria *lista_categorias_head) {
+    if (!lista_categorias_head) {
+        printf("Não há categorias carregadas.\n");
+        return;
+    }
+
+    int cat_id;
+    printf("\nDigite o numero da categoria desejada (1-%d): ", NUM_CATEGORIAS);
+    if (scanf("%d", &cat_id) != 1 || cat_id < 1 || cat_id > NUM_CATEGORIAS) {
+        int c; while ((c = getchar()) != '\n' && c != EOF) {}
+        printf("Entrada inválida.\n");
+        return;
+    }
+    while (getchar() != '\n'); // limpa buffer
+
+    NoCategoria *cat = buscarCategoriaPorID(lista_categorias_head, intParaCategoria(cat_id), NULL);
+    if (!cat) {
+        printf("Categoria não encontrada.\n");
+        return;
+    }
+
+    if (!cat->arvore_proteina_root) {
+        printf("Nenhum alimento cadastrado nesta categoria.\n");
+        return;
+    }
+
+    float min_prot, max_prot;
+    printf("Digite o valor minimo de proteina (g): ");
+    if (scanf("%f", &min_prot) != 1) { while(getchar() != '\n'); printf("Entrada inválida.\n"); return; }
+    printf("Digite o valor maximo de proteina (g): ");
+    if (scanf("%f", &max_prot) != 1) { while(getchar() != '\n'); printf("Entrada inválida.\n"); return; }
+    while(getchar() != '\n');
+
+    if (min_prot > max_prot) {
+        float tmp = min_prot;
+        min_prot = max_prot;
+        max_prot = tmp;
+    }
+
+    int contador = 0;
+    printf("\n--- Alimentos de %s com proteína entre %.2fg e %.2fg ---\n", cat->nome, min_prot, max_prot);
+    printf("Código | Descrição                                           | Proteína | Energia\n");
+    printf("-------+-----------------------------------------------------+----------+--------\n");
+
+    /* Função interna recursiva para percorrer árvore de proteína em ordem decrescente e filtrar */
+    void percorrerArvoreProteinaIntervalo(NoArvore *no) {
+        if (!no) return;
+
+        /* percorre direita primeiro = decrescente */
+        percorrerArvoreProteinaIntervalo(no->dir);
+
+        if (no->chave >= min_prot && no->chave <= max_prot) {
+            NoAlimento *a = no->ptr_alimento;
+            if (a) {
+                printf("%6d | %-45s | %8.2f | %6.2f\n",
+                       a->dados.codigo, a->dados.descricao,
+                       a->dados.proteina, a->dados.energia);
+                contador++;
+            }
+        }
+
+        /* percorre esquerda */
+        percorrerArvoreProteinaIntervalo(no->esq);
+    }
+
+    percorrerArvoreProteinaIntervalo(cat->arvore_proteina_root);
+
+    if (contador == 0)
+        printf("(Nenhum alimento encontrado neste intervalo)\n");
+
+    printf("-------+-----------------------------------------------------+----------+--------\n");
+    printf("Total de alimentos exibidos: %d\n", contador);
+}
+
+/* Opção 7: Remover uma categoria */
+NoCategoria* removerCategoria(NoCategoria *head) {
+    if (!head) {
+        printf("Nenhuma categoria carregada.\n");
+        return NULL;
+    }
+
+    printf("\n--- Lista de Categorias ---\n");
+    NoCategoria *aux = head;
+    int index = 1;
+    while (aux) {
+        printf("%2d. %s\n", index, aux->nome);
+        aux = aux->prox;
+        index++;
+    }
+
+    int escolha;
+    printf("\nDigite o número da categoria a remover (1-%d): ", index - 1);
+    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha >= index) {
+        while (getchar() != '\n'); // limpar buffer
+        printf("Entrada inválida.\n");
+        return head;
+    }
+    while (getchar() != '\n');
+
+    NoCategoria *atual = head, *anterior = NULL;
+    int contador = 1;
+    while (atual && contador < escolha) {
+        anterior = atual;
+        atual = atual->prox;
+        contador++;
+    }
+
+    if (!atual) {
+        printf("Categoria não encontrada.\n");
+        return head;
+    }
+
+    // Libera alimentos da categoria
+    NoAlimento *alim = atual->lista_alimentos_head;
+    while (alim) {
+        NoAlimento *tmp = alim;
+        alim = alim->prox;
+        free(tmp);
+    }
+
+    // Libera árvores binárias
+    void liberarArvore(NoArvore *root) {
+        if (!root) return;
+        liberarArvore(root->esq);
+        liberarArvore(root->dir);
+        free(root);
+    }
+    liberarArvore(atual->arvore_energia_root);
+    liberarArvore(atual->arvore_proteina_root);
+
+    // Remove o nó da lista encadeada
+    if (anterior == NULL)
+        head = atual->prox;
+    else
+        anterior->prox = atual->prox;
+
+    printf("Categoria '%s' removida com sucesso!\n", atual->nome);
+    free(atual);
+
+    return head;
+}
+
+/* Opção 8: Remover um alimento específico */
+NoCategoria* removerAlimento(NoCategoria *head) {
+    if (!head) {
+        printf("Nenhuma categoria carregada.\n");
+        return NULL;
+    }
+
+    // Exibe todas as categorias
+    printf("\n--- Categorias ---\n");
+    NoCategoria *cat = head;
+    int i = 1;
+    while (cat) {
+        printf("%2d. %s\n", i, cat->nome);
+        cat = cat->prox;
+        i++;
+    }
+
+    int escolha;
+    printf("\nDigite o número da categoria: ");
+    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha >= i) {
+        while (getchar() != '\n');
+        printf("Entrada inválida.\n");
+        return head;
+    }
+    while (getchar() != '\n');
+
+    // Localiza a categoria escolhida
+    cat = head;
+    for (int j = 1; j < escolha && cat; j++)
+        cat = cat->prox;
+
+    if (!cat || !cat->lista_alimentos_head) {
+        printf("Categoria vazia ou inexistente.\n");
+        return head;
+    }
+
+    // Lista os alimentos dessa categoria
+    printf("\n--- Alimentos em %s ---\n", cat->nome);
+    NoAlimento *a = cat->lista_alimentos_head;
+    int idx = 1;
+    while (a) {
+        printf("%3d. %-40s | Energia: %.2f | Proteína: %.2f\n",
+               idx, a->dados.nome, a->dados.energia, a->dados.proteina);
+        a = a->prox;
+        idx++;
+    }
+
+    int escolhaAlimento;
+    printf("\nDigite o número do alimento a remover: ");
+    if (scanf("%d", &escolhaAlimento) != 1 || escolhaAlimento < 1 || escolhaAlimento >= idx) {
+        while (getchar() != '\n');
+        printf("Entrada inválida.\n");
+        return head;
+    }
+    while (getchar() != '\n');
+
+    // Remove o alimento da lista encadeada
+    NoAlimento *atual = cat->lista_alimentos_head;
+    NoAlimento *anterior = NULL;
+    int contador = 1;
+
+    while (atual && contador < escolhaAlimento) {
+        anterior = atual;
+        atual = atual->prox;
+        contador++;
+    }
+
+    if (!atual) {
+        printf("Alimento não encontrado.\n");
+        return head;
+    }
+
+    if (anterior == NULL)
+        cat->lista_alimentos_head = atual->prox;
+    else
+        anterior->prox = atual->prox;
+
+    printf("Alimento '%s' removido da categoria '%s'.\n",
+           atual->dados.nome, cat->nome);
+
+    free(atual);
+
+    // Reconstrói as árvores de energia e proteína
+    void liberarArvore(NoArvore *root) {
+        if (!root) return;
+        liberarArvore(root->esq);
+        liberarArvore(root->dir);
+        free(root);
+    }
+    liberarArvore(cat->arvore_energia_root);
+    liberarArvore(cat->arvore_proteina_root);
+    cat->arvore_energia_root = NULL;
+    cat->arvore_proteina_root = NULL;
+
+    NoAlimento *temp = cat->lista_alimentos_head;
+    while (temp) {
+        cat->arvore_energia_root =
+            inserirNoArvoreEnergia(cat->arvore_energia_root, temp);
+        cat->arvore_proteina_root =
+            inserirNoArvoreProteina(cat->arvore_proteina_root, temp);
+        temp = temp->prox;
+    }
+
+    printf("Árvores da categoria '%s' atualizadas.\n", cat->nome);
+
+    return head;
+}
+
+/* Opção 9: Encerrar e salvar em novo arquivo */
+void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head) {
+    FILE *f = fopen(caminho, "wb");
+    if (!f) {
+        printf("Erro ao abrir '%s' para escrita.\n", caminho);
+        return;
+    }
+
+    int total = 0;
+    NoCategoria *cat = head;
+    while (cat) {
+        NoAlimento *a = cat->lista_alimentos_head;
+        while (a) {
+            AlimentoDados dados = a->dados;
+            fwrite(&dados, sizeof(AlimentoDados), 1, f);
+            total++;
+            a = a->prox;
+        }
+        cat = cat->prox;
+    }
+
+    fclose(f);
+    printf("✅ %d alimentos foram salvos em '%s' com sucesso!\n", total, caminho);
+}
+
+
+/* Função auxiliar de liberação */
+void liberarEstruturas(NoCategoria *head) {
+    while (head) {
+        NoCategoria *prox = head->prox;
+
+        // libera árvores binárias
+        void liberarArvore(NoArvore *root) {
+            if (!root) return;
+            liberarArvore(root->esq);
+            liberarArvore(root->dir);
+            free(root);
+        }
+        liberarArvore(head->arvore_energia_root);
+        liberarArvore(head->arvore_proteina_root);
+
+        // libera lista de alimentos
+        NoAlimento *a = head->lista_alimentos_head;
+        while (a) {
+            NoAlimento *proxA = a->prox;
+            free(a);
+            a = proxA;
+        }
+
+        free(head);
+        head = prox;
+    }
+}
+
+
 
 
 /* ===========================================================
@@ -722,12 +946,33 @@ printf("✅ %d alimentos foram carregados do binário com sucesso!\n", total);
             case 6:
                 listarAlimentosPorIntervaloProteina(lista_categorias_head);
                 break;
-            case 9:
+            case 7:
+                lista_categorias_head = removerCategoria(lista_categorias_head);
+                break;
+            case 8:
+                lista_categorias_head = removerAlimento(lista_categorias_head);
+                break;
+            case 9: {
                 printf("Encerrando o programa...\n");
-                break;
-            default:
-                printf("Opção inválida!\n");
-                break;
+
+                char opcao;
+                printf("Deseja salvar as alterações em um novo arquivo binário? (s/n): ");
+                scanf(" %c", &opcao);
+
+                if (opcao == 's' || opcao == 'S') {
+                    const char *novo_arquivo = "arquivo_alterado.bin";
+                    salvarDadosBinariosAtualizado(novo_arquivo, lista_categorias_head);
+                } else {
+                    printf("Alterações não foram salvas.\n");
+                }
+
+                liberarEstruturas(lista_categorias_head);
+                lista_categorias_head = NULL;
+
+                printf("Programa finalizado.\n");
+                return 0;
+            }
+
         }
 
     } while (opcao != 9);
