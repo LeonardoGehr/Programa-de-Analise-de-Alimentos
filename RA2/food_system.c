@@ -35,7 +35,7 @@ typedef struct {
 Alimento alimentos[MAX_ALIMENTOS];
 int total_alimentos = 0;
 
-/* --- Funções utilitárias de processamento de strings --- */
+/* Funções utilitárias de processamento de strings */
 
 /* Remove \n e \r do final da string */
 void removerQuebraLinha(char *str) {
@@ -125,7 +125,7 @@ const char* obterNomeCategoria(Categoria cat) {
     return "Desconhecida";
 }
 
-/* --- Leitura do CSV (parte A do trabalho) --- */
+/* Leitura do CSV (parte A do trabalho) */
 
 /* Lê arquivo CSV e preenche o vetor global alimentos[] */
 int lerArquivoCSV(const char *nome_arquivo) {
@@ -134,7 +134,6 @@ int lerArquivoCSV(const char *nome_arquivo) {
 
     total_alimentos = 0;
     char linha[TAMANHO_LINHA];
-    const char *delimitador = ";";
 
     /* Pular cabeçalho */
     if (fgets(linha, sizeof(linha), arquivo) == NULL) { // condicional: arquivo vazio
@@ -146,47 +145,47 @@ int lerArquivoCSV(const char *nome_arquivo) {
     while (fgets(linha, sizeof(linha), arquivo) != NULL && total_alimentos < MAX_ALIMENTOS) { // loop: lê cada linha
         removerQuebraLinha(linha);
 
-        char *token = strtok(linha, delimitador); // tokeniza por ponto e vírgula
+        char *token = strtok(linha, ","); // tokeniza por vírgula
         if (token == NULL) continue; // condicional: linha vazia ou inválida
 
         /* Campo 1: ID */
         alimentos[total_alimentos].numero_do_alimento = atoi(token);
 
         /* Campo 2: Descrição */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) continue;
         removerAspas(token);
         strncpy(alimentos[total_alimentos].descricao, token, MAX_DESC-1);
         alimentos[total_alimentos].descricao[MAX_DESC-1] = '\0';
 
         /* Campo 3: Umidade (%) */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) continue;
         alimentos[total_alimentos].umidade = processarPorcentagem(token);
 
         /* Campo 4: Energia (kcal) */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) continue;
         removerAspas(token);
         substituirVirgulaPorPonto(token);
         alimentos[total_alimentos].energia = atof(token);
 
         /* Campo 5: Proteína (g) */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) continue;
         removerAspas(token);
         substituirVirgulaPorPonto(token);
         alimentos[total_alimentos].proteina = atof(token);
 
         /* Campo 6: Carboidrato (g) */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) continue;
         removerAspas(token);
         substituirVirgulaPorPonto(token);
         alimentos[total_alimentos].carboidrato = atof(token);
 
         /* Campo 7: Categoria */
-        token = strtok(NULL, delimitador);
+        token = strtok(NULL, ",");
         if (token == NULL) {
             alimentos[total_alimentos].categoria = CEREAIS; // condicional: sem categoria -> padrão
         } else {
@@ -200,7 +199,7 @@ int lerArquivoCSV(const char *nome_arquivo) {
     return 1; // sucesso
 }
 
-/* --- Funções de impressão de tabela --- */
+/* Funções de impressão de tabela */
 
 /* Imprime cabeçalho da tabela */
 void imprimirCabecalhoTabela(void) {
@@ -225,7 +224,7 @@ void imprimirRodapeTabela(int total) {
     printf("Total: %d alimento(s) encontrado(s)\n", total);
 }
 
-/* --- Funções de filtragem e ordenação (requisito 3: não replicar vetor inteiro) --- */
+/* Funções de filtragem e ordenação (requisito 3: não replicar vetor inteiro) */
 
 /* Filtra por categoria e retorna ponteiros para os alimentos filtrados */
 int filtrarPorCategoria(Categoria cat, Alimento *resultado[], int max_resultado) {
@@ -280,7 +279,7 @@ float extrairCarboidrato(const Alimento *a) { return a->carboidrato; }
 float extrairRelacaoEnergiaProteina(const Alimento *a) { return (a->proteina > 0) ? (a->energia / a->proteina) : 0.0f; }
 float extrairRelacaoEnergiaCarboidrato(const Alimento *a) { return (a->carboidrato > 0) ? (a->energia / a->carboidrato) : 0.0f; }
 
-/* --- Funções de listagem conforme opções do enunciado --- */
+/* Funções de listagem conforme opções do enunciado */
 
 /* Lista categorias (simples) */
 void listarCategorias(void) {
@@ -334,7 +333,7 @@ void listarTopNPorCriterio(Categoria cat, float (*extrairValor)(const Alimento*)
     imprimirRodapeTabela(n);
 }
 
-/* --- Função para pausar (aguardar ENTER) --- */
+/* Função para pausar (aguardar ENTER) */
 void pausar(void) {
     int c;
     printf("\nPressione ENTER para continuar...");
@@ -342,9 +341,98 @@ void pausar(void) {
     while ((c = getchar()) != '\n' && c != EOF) { }
 }
 
-/* --- Função principal com menu (parte B do trabalho) --- */
+int alteracao_dados = 0; // flag global ou estática
+
+/* Remove categoria por índice (1-15) */
+void removerCategoria() {
+    int escolha;
+    listarCategorias();
+    printf("Digite o numero da categoria a remover: ");
+    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha > 15) { 
+        while(getchar()!='\n'); 
+        printf("Entrada invalida.\n"); 
+        return; 
+    }
+    while(getchar()!='\n');
+
+    Categoria cat = intParaCategoria(escolha);
+    int count = 0;
+    for (int i = 0; i < total_alimentos; i++) {
+        if (alimentos[i].categoria == cat) {
+            alimentos[i] = alimentos[total_alimentos - 1]; // sobrescreve com último
+            total_alimentos--;
+            i--; // reavalia posição atual
+            count++;
+        }
+    }
+    if (count > 0) {
+        printf("Categoria '%s' removida com %d alimento(s) deletado(s).\n", obterNomeCategoria(cat), count);
+        alteracao_dados = 1;
+    } else {
+        printf("Nenhum alimento encontrado nesta categoria.\n");
+    }
+}
+
+/* Remove alimento específico por ID */
+void removerAlimentoEspecifico() {
+    int id;
+    printf("Digite o ID do alimento a remover: ");
+    if (scanf("%d", &id) != 1) { while(getchar()!='\n'); printf("Entrada invalida.\n"); return; }
+    while(getchar()!='\n');
+
+    int encontrado = 0;
+    for (int i = 0; i < total_alimentos; i++) {
+        if (alimentos[i].numero_do_alimento == id) {
+            alimentos[i] = alimentos[total_alimentos - 1]; // sobrescreve com último
+            total_alimentos--;
+            encontrado = 1;
+            alteracao_dados = 1;
+            break;
+        }
+    }
+    if (encontrado) printf("Alimento com ID %d removido.\n", id);
+    else printf("Alimento com ID %d nao encontrado.\n", id);
+}
+
+/* Salva alterações em dados.bin */
+void salvarDadosBinarios() {
+    if (!alteracao_dados) return;
+
+    FILE *f = fopen("dados.bin", "wb");
+    if (!f) { printf("Erro ao salvar dados.bin\n"); return; }
+
+    fwrite(alimentos, sizeof(Alimento), total_alimentos, f);
+    fclose(f);
+    printf("Alteracoes salvas em dados.bin\n");
+    alteracao_dados = 0;
+}
+
+
+/* Função principal com menu (parte B do trabalho) */
 int main(void) {
     setlocale(LC_ALL, ""); // configura localidade
+    /* Backup inicial do arquivo dados.bin */
+    FILE *orig = fopen("dados.bin", "rb");
+    if (orig) {
+        FILE *bkp = fopen("dados_original.bin", "wb");
+        if (bkp) {
+            char buffer[1024];
+            size_t lidos;
+            while ((lidos = fread(buffer, 1, sizeof(buffer), orig)) > 0) {
+                fwrite(buffer, 1, lidos, bkp);
+            }
+            fclose(bkp);
+            printf("Backup inicial criado: dados_original.bin\n");
+        } else {
+            printf("Erro ao criar backup.\n");
+            fclose(orig);
+            return 1;
+        }
+        fclose(orig);
+    } else {
+        printf("Arquivo dados.bin nao encontrado. Backup nao criado.\n");
+    }
+
 
     if (!lerArquivoCSV("lista_de_alimentos.csv")) { // condicional: se não carregou arquivo
         printf("Erro ao carregar arquivo 'lista_de_alimentos.csv'.\n");
