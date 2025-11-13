@@ -157,18 +157,6 @@ void listarAlimentosDeCategoria(const char *caminho) {
     fclose(fp);
 }
 
-void calcularMediasEnergiaProteina(void) {
-    printf("\n🔧 Função ainda não implementada: calcular médias de energia e proteína.\n");
-}
-
-void buscarAlimentoPorNome(void) {
-    printf("\n🔧 Função ainda não implementada: buscar alimento pelo nome.\n");
-}
-
-void mostrarTopAlimentosEnergiaProteina(void) {
-    printf("\n🔧 Função ainda não implementada: mostrar top alimentos por energia/proteína.\n");
-}
-
 /* Opção 3: Listar por energia (decrescente) */
 /* Helpers: inserir alimento ordenado por nome, inserir na árvore por energia,
    percorrer árvore em ordem decrescente, liberar estruturas. */
@@ -201,26 +189,70 @@ static void inserirAlimentoOrdenadoPorNome(NoAlimento **head, NoAlimento *novo) 
     atual->prox = novo;
 }
 
-/* Insere nó na árvore indexando pela energia (chave float).
-   Estratégia: se chave < root->chave -> esq, caso contrário -> dir (duplicates right) */
-static NoArvore* inserirNoArvoreEnergia(NoArvore *root, NoAlimento *ptr_alim) {
-    if (ptr_alim == NULL) return root;
-    NoArvore *novo;
-    if (root == NULL) {
-        novo = (NoArvore*) malloc(sizeof(NoArvore));
-        if (!novo) return NULL;
-        novo->chave = ptr_alim->dados.energia;
+NoArvore* inserirNoArvoreProteina(NoArvore *root, NoAlimento *ptr_alim) {
+    if (!root) {
+        NoArvore *novo = malloc(sizeof(NoArvore));
         novo->ptr_alimento = ptr_alim;
+        novo->chave = ptr_alim->dados.proteina;
         novo->esq = novo->dir = NULL;
         return novo;
     }
-    if (ptr_alim->dados.energia < root->chave) {
-        root->esq = inserirNoArvoreEnergia(root->esq, ptr_alim);
-    } else {
-        root->dir = inserirNoArvoreEnergia(root->dir, ptr_alim);
-    }
+
+    if (ptr_alim->dados.proteina < root->chave)
+        root->esq = inserirNoArvoreProteina(root->esq, ptr_alim);
+    else
+        root->dir = inserirNoArvoreProteina(root->dir, ptr_alim);
+
     return root;
 }
+
+NoArvore* inserirNoArvoreEnergia(NoArvore *root, NoAlimento *ptr_alim) {
+    if (!root) {
+        NoArvore *novo = (NoArvore*) malloc(sizeof(NoArvore));
+        novo->ptr_alimento = ptr_alim;
+        novo->chave = ptr_alim->dados.energia;
+        novo->esq = novo->dir = NULL;
+        return novo;
+    }
+
+    if (ptr_alim->dados.energia < root->chave)
+        root->esq = inserirNoArvoreEnergia(root->esq, ptr_alim);
+    else
+        root->dir = inserirNoArvoreEnergia(root->dir, ptr_alim);
+
+    return root;
+}
+
+void liberarListaCategorias(NoCategoria *head) {
+    NoCategoria *cat_atual = head;
+    while (cat_atual) {
+        NoCategoria *prox_cat = cat_atual->prox;
+
+        // Libera lista de alimentos
+        NoAlimento *alim_atual = cat_atual->lista_alimentos_head;
+        while (alim_atual) {
+            NoAlimento *prox_alim = alim_atual->prox;
+            free(alim_atual);
+            alim_atual = prox_alim;
+        }
+
+        // Libera árvores
+        // Função auxiliar para liberar árvores
+        void liberarArvore(NoArvore *root) {
+            if (!root) return;
+            liberarArvore(root->esq);
+            liberarArvore(root->dir);
+            free(root);
+        }
+        liberarArvore(cat_atual->arvore_energia_root);
+        liberarArvore(cat_atual->arvore_proteina_root);
+
+        free(cat_atual);
+        cat_atual = prox_cat;
+    }
+}
+
+
 
 /* Constrói a lista de categorias, lista de alimentos e árvores */
 
@@ -302,23 +334,6 @@ NoCategoria* construirEstruturasCategorias(const char *caminho) {
             raiz_prot->ptr_alimento = novo_no;
             raiz_prot->esq = raiz_prot->dir = NULL;
             novo_no->no_arvore_proteina = raiz_prot;
-        }
-        /* Inserção recursiva na árvore de proteína */
-        NoArvore* inserirNoArvoreProteina(NoArvore *root, NoAlimento *ptr_alim) {
-            if (!ptr_alim) return root;
-            if (!root) {
-                NoArvore *novo = (NoArvore*) malloc(sizeof(NoArvore));
-                if (!novo) return NULL;
-                novo->chave = ptr_alim->dados.proteina;
-                novo->ptr_alimento = ptr_alim;
-                novo->esq = novo->dir = NULL;
-                return novo;
-            }
-            if (ptr_alim->dados.proteina < root->chave)
-                root->esq = inserirNoArvoreProteina(root->esq, ptr_alim);
-            else
-                root->dir = inserirNoArvoreProteina(root->dir, ptr_alim);
-            return root;
         }
         cat_no->arvore_proteina_root = inserirNoArvoreProteina(cat_no->arvore_proteina_root, novo_no);
     }
@@ -645,36 +660,39 @@ void listarAlimentosPorIntervaloProteina(NoCategoria *lista_categorias_head) {
 }
 
 /* Opção 7: Remover uma categoria */
-NoCategoria* removerCategoria(NoCategoria *head) {
+NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados) {
     if (!head) {
         printf("Nenhuma categoria carregada.\n");
-        return NULL;
+        return head;
     }
 
+    /* Mostra lista de categorias (índice 1..n) */
+    NoCategoria *ptr = head;
+    int n = 0;
     printf("\n--- Lista de Categorias ---\n");
-    NoCategoria *aux = head;
-    int index = 1;
-    while (aux) {
-        printf("%2d. %s\n", index, aux->nome);
-        aux = aux->prox;
-        index++;
+    while (ptr) {
+        n++;
+        printf("%2d. %s\n", n, ptr->nome);
+        ptr = ptr->prox;
     }
 
     int escolha;
-    printf("\nDigite o número da categoria a remover (1-%d): ", index - 1);
-    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha >= index) {
-        while (getchar() != '\n'); // limpar buffer
+    printf("\nDigite o número da categoria a remover (1-%d): ", n);
+    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha > n) {
+        while (getchar() != '\n');
         printf("Entrada inválida.\n");
         return head;
     }
     while (getchar() != '\n');
 
-    NoCategoria *atual = head, *anterior = NULL;
-    int contador = 1;
-    while (atual && contador < escolha) {
+    /* Localiza o nó correspondente (anterior + atual) */
+    NoCategoria *anterior = NULL;
+    NoCategoria *atual = head;
+    int idx = 1;
+    while (atual && idx < escolha) {
         anterior = atual;
         atual = atual->prox;
-        contador++;
+        idx++;
     }
 
     if (!atual) {
@@ -682,146 +700,146 @@ NoCategoria* removerCategoria(NoCategoria *head) {
         return head;
     }
 
-    // Libera alimentos da categoria
-    NoAlimento *alim = atual->lista_alimentos_head;
-    while (alim) {
-        NoAlimento *tmp = alim;
-        alim = alim->prox;
+    /* libera lista de alimentos da categoria */
+    NoAlimento *a = atual->lista_alimentos_head;
+    while (a) {
+        NoAlimento *tmp = a;
+        a = a->prox;
         free(tmp);
     }
 
-    // Libera árvores binárias
-    void liberarArvore(NoArvore *root) {
-        if (!root) return;
-        liberarArvore(root->esq);
-        liberarArvore(root->dir);
-        free(root);
+    /* função local para liberar árvore */
+    void liberarArvoreLocal(NoArvore *r) {
+        if (!r) return;
+        liberarArvoreLocal(r->esq);
+        liberarArvoreLocal(r->dir);
+        free(r);
     }
-    liberarArvore(atual->arvore_energia_root);
-    liberarArvore(atual->arvore_proteina_root);
 
-    // Remove o nó da lista encadeada
-    if (anterior == NULL)
+    liberarArvoreLocal(atual->arvore_energia_root);
+    liberarArvoreLocal(atual->arvore_proteina_root);
+
+    /* remove da lista encadeada */
+    if (anterior == NULL) {      /* é o primeiro */
         head = atual->prox;
-    else
+    } else {
         anterior->prox = atual->prox;
+    }
 
     printf("Categoria '%s' removida com sucesso!\n", atual->nome);
     free(atual);
 
+    if (alteracao_dados) *alteracao_dados = 1;
     return head;
 }
 
+
 /* Opção 8: Remover um alimento específico */
-NoCategoria* removerAlimento(NoCategoria *head) {
+void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados) {
     if (!head) {
         printf("Nenhuma categoria carregada.\n");
-        return NULL;
+        return;
     }
 
-    // Exibe todas as categorias
-    printf("\n--- Categorias ---\n");
+    /* Lista categorias para escolha */
     NoCategoria *cat = head;
-    int i = 1;
+    int idx_cat = 1;
+    printf("\n--- Categorias ---\n");
     while (cat) {
-        printf("%2d. %s\n", i, cat->nome);
+        printf("%2d. %s\n", idx_cat, cat->nome);
         cat = cat->prox;
-        i++;
+        idx_cat++;
     }
 
-    int escolha;
+    int escolha_cat;
     printf("\nDigite o número da categoria: ");
-    if (scanf("%d", &escolha) != 1 || escolha < 1 || escolha >= i) {
+    if (scanf("%d", &escolha_cat) != 1 || escolha_cat < 1 || escolha_cat >= idx_cat) {
         while (getchar() != '\n');
         printf("Entrada inválida.\n");
-        return head;
+        return;
     }
     while (getchar() != '\n');
 
-    // Localiza a categoria escolhida
+    /* encontra a categoria selecionada */
     cat = head;
-    for (int j = 1; j < escolha && cat; j++)
-        cat = cat->prox;
+    for (int i = 1; i < escolha_cat && cat; i++) cat = cat->prox;
+    if (!cat) { printf("Categoria inexistente.\n"); return; }
+    if (!cat->lista_alimentos_head) { printf("Categoria vazia.\n"); return; }
 
-    if (!cat || !cat->lista_alimentos_head) {
-        printf("Categoria vazia ou inexistente.\n");
-        return head;
-    }
-
-    // Lista os alimentos dessa categoria
-    printf("\n--- Alimentos em %s ---\n", cat->nome);
+    /* Lista alimentos da categoria (índice 1..m) */
     NoAlimento *a = cat->lista_alimentos_head;
     int idx = 1;
+    printf("\n--- Alimentos em %s ---\n", cat->nome);
     while (a) {
         printf("%3d. %-40s | Energia: %.2f | Proteína: %.2f\n",
-               idx, a->dados.nome, a->dados.energia, a->dados.proteina);
+               idx, a->dados.descricao, a->dados.energia, a->dados.proteina);
         a = a->prox;
         idx++;
     }
 
-    int escolhaAlimento;
+    int escolha_alim;
     printf("\nDigite o número do alimento a remover: ");
-    if (scanf("%d", &escolhaAlimento) != 1 || escolhaAlimento < 1 || escolhaAlimento >= idx) {
+    if (scanf("%d", &escolha_alim) != 1 || escolha_alim < 1 || escolha_alim >= idx) {
         while (getchar() != '\n');
         printf("Entrada inválida.\n");
-        return head;
+        return;
     }
     while (getchar() != '\n');
 
-    // Remove o alimento da lista encadeada
+    
+    /* Remove da lista encadeada da categoria */
     NoAlimento *atual = cat->lista_alimentos_head;
     NoAlimento *anterior = NULL;
     int contador = 1;
-
-    while (atual && contador < escolhaAlimento) {
+    while (atual && contador < escolha_alim) {
         anterior = atual;
         atual = atual->prox;
         contador++;
     }
 
-    if (!atual) {
-        printf("Alimento não encontrado.\n");
-        return head;
-    }
+    if (!atual) { printf("Alimento não encontrado.\n"); return; }
 
     if (anterior == NULL)
         cat->lista_alimentos_head = atual->prox;
     else
         anterior->prox = atual->prox;
 
-    printf("Alimento '%s' removido da categoria '%s'.\n",
-           atual->dados.nome, cat->nome);
-
+    printf("Alimento '%s' removido da categoria '%s'.\n", atual->dados.descricao, cat->nome);
     free(atual);
+    cat->total_alimentos = 0; /* vamos recalcular abaixo */
 
-    // Reconstrói as árvores de energia e proteína
-    void liberarArvore(NoArvore *root) {
-        if (!root) return;
-        liberarArvore(root->esq);
-        liberarArvore(root->dir);
-        free(root);
+    /* libera árvores antigas */
+    void liberarArvoreLocal(NoArvore *r) {
+        if (!r) return;
+        liberarArvoreLocal(r->esq);
+        liberarArvoreLocal(r->dir);
+        free(r);
     }
-    liberarArvore(cat->arvore_energia_root);
-    liberarArvore(cat->arvore_proteina_root);
+    liberarArvoreLocal(cat->arvore_energia_root);
+    liberarArvoreLocal(cat->arvore_proteina_root);
     cat->arvore_energia_root = NULL;
     cat->arvore_proteina_root = NULL;
 
-    NoAlimento *temp = cat->lista_alimentos_head;
-    while (temp) {
-        cat->arvore_energia_root =
-            inserirNoArvoreEnergia(cat->arvore_energia_root, temp);
-        cat->arvore_proteina_root =
-            inserirNoArvoreProteina(cat->arvore_proteina_root, temp);
-        temp = temp->prox;
+    /* Reconstroi as árvores a partir da lista encadeada atualizada */
+    NoAlimento *tmp = cat->lista_alimentos_head;
+    while (tmp) {
+        cat->arvore_energia_root = inserirNoArvoreEnergia(cat->arvore_energia_root, tmp);
+        cat->arvore_proteina_root = inserirNoArvoreProteina(cat->arvore_proteina_root, tmp);
+        cat->total_alimentos++;
+        tmp = tmp->prox;
     }
 
+    if (alteracao_dados) *alteracao_dados = 1;
     printf("Árvores da categoria '%s' atualizadas.\n", cat->nome);
-
-    return head;
 }
 
 /* Opção 9: Encerrar e salvar em novo arquivo */
 void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head) {
+    if (!caminho || !head) {
+        printf("Nada para salvar.\n");
+        return;
+    }
+
     FILE *f = fopen(caminho, "wb");
     if (!f) {
         printf("Erro ao abrir '%s' para escrita.\n", caminho);
@@ -833,8 +851,16 @@ void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head) {
     while (cat) {
         NoAlimento *a = cat->lista_alimentos_head;
         while (a) {
-            AlimentoDados dados = a->dados;
-            fwrite(&dados, sizeof(AlimentoDados), 1, f);
+            /* Converte AlimentoDados -> Alimento (formato P1 / file_format.h) */
+            Alimento out;
+            out.codigo = a->dados.codigo;
+            /* 'nome' tem tamanho 50 em file_format.h */
+            strncpy(out.nome, a->dados.descricao, sizeof(out.nome) - 1);
+            out.nome[sizeof(out.nome) - 1] = '\0';
+            out.calorias = a->dados.energia;
+            out.proteinas = a->dados.proteina;
+
+            fwrite(&out, sizeof(Alimento), 1, f);
             total++;
             a = a->prox;
         }
@@ -846,34 +872,6 @@ void salvarDadosBinariosAtualizado(const char *caminho, NoCategoria *head) {
 }
 
 
-/* Função auxiliar de liberação */
-void liberarEstruturas(NoCategoria *head) {
-    while (head) {
-        NoCategoria *prox = head->prox;
-
-        // libera árvores binárias
-        void liberarArvore(NoArvore *root) {
-            if (!root) return;
-            liberarArvore(root->esq);
-            liberarArvore(root->dir);
-            free(root);
-        }
-        liberarArvore(head->arvore_energia_root);
-        liberarArvore(head->arvore_proteina_root);
-
-        // libera lista de alimentos
-        NoAlimento *a = head->lista_alimentos_head;
-        while (a) {
-            NoAlimento *proxA = a->prox;
-            free(a);
-            a = proxA;
-        }
-
-        free(head);
-        head = prox;
-    }
-}
-
 
 
 
@@ -882,6 +880,7 @@ void liberarEstruturas(NoCategoria *head) {
    =========================================================== */
 
 int main(void) {
+    int alteracao_dados = 0;
     printf("===========================================\n");
     printf("   SISTEMA DE ALIMENTOS - P2\n");
     printf("===========================================\n\n");
@@ -900,7 +899,7 @@ int main(void) {
         ptr = ptr->prox;
     }
 
-printf("✅ %d alimentos foram carregados do binário com sucesso!\n", total);
+    printf("✅ %d alimentos foram carregados do binário com sucesso!\n", total);
 
 
 
@@ -947,35 +946,31 @@ printf("✅ %d alimentos foram carregados do binário com sucesso!\n", total);
                 listarAlimentosPorIntervaloProteina(lista_categorias_head);
                 break;
             case 7:
-                lista_categorias_head = removerCategoria(lista_categorias_head);
+                lista_categorias_head = removerCategoria(lista_categorias_head, &alteracao_dados);
                 break;
             case 8:
-                lista_categorias_head = removerAlimento(lista_categorias_head);
+                removerAlimentoEspecifico(lista_categorias_head, &alteracao_dados);
                 break;
-            case 9: {
-                printf("Encerrando o programa...\n");
-
-                char opcao;
-                printf("Deseja salvar as alterações em um novo arquivo binário? (s/n): ");
-                scanf(" %c", &opcao);
-
-                if (opcao == 's' || opcao == 'S') {
-                    const char *novo_arquivo = "arquivo_alterado.bin";
-                    salvarDadosBinariosAtualizado(novo_arquivo, lista_categorias_head);
+            case 9:
+                if (alteracao_dados) {
+                    salvarDadosBinariosAtualizado("arquivo_alterado.bin", lista_categorias_head);
                 } else {
-                    printf("Alterações não foram salvas.\n");
+                    printf("\nNenhuma alteração detectada. Encerrando.\n");
                 }
-
-                liberarEstruturas(lista_categorias_head);
-                lista_categorias_head = NULL;
-
-                printf("Programa finalizado.\n");
-                return 0;
-            }
-
+                liberarListaCategorias(lista_categorias_head);
+                printf("Programa encerrado.\n");
+                break;
+            default:
+                printf("Opção inválida.\n");
         }
-
     } while (opcao != 9);
 
+        if (alteracao_dados) {
+            salvarDadosBinariosAtualizado("arquivo_alterado.bin", lista_categorias_head);
+            printf("Arquivo atualizado salvo como 'arquivo_alterado.bin'.\n");
+        }
+
+    liberarListaCategorias(lista_categorias_head);
     return 0;
 }
+

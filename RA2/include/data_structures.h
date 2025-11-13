@@ -84,7 +84,7 @@ void listarAlimentosPorEnergia(const char *caminho);
 void listarAlimentosPorProteina(NoCategoria *no_cat);
 void listarAlimentosPorEnergiaIntervalo(NoCategoria *no_cat);
 void listarAlimentosPorProteinaIntervalo(NoCategoria *no_cat);
-void removerCategoria(NoCategoria **head, int *alteracao_dados);
+NoCategoria* removerCategoria(NoCategoria *head, int *alteracao_dados);
 void removerAlimentoEspecifico(NoCategoria *head, int *alteracao_dados);
 
 #endif
